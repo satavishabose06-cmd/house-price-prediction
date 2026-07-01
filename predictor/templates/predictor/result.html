@@ -1,0 +1,327 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <link rel="stylesheet" href="{% static 'predictor/css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .result-container {
+            width: 100%;
+            max-width: 1400px;
+            padding: 40px;
+            margin: 40px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .back-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .hero-result {
+            background: var(--bg-card);
+            padding: 48px;
+            border-radius: 32px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            border: 1px solid var(--primary);
+            backdrop-filter: blur(16px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-result::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+            z-index: -1;
+        }
+        .estimated-label {
+            font-size: 18px;
+            color: var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+        .price-display {
+            font-size: 72px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        .price-range {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+        .confidence-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 12px 24px;
+            border-radius: 100px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+        .panel {
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel h2 {
+            font-size: 22px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .panel h2 i {
+            color: var(--primary);
+        }
+        #map {
+            width: 100%;
+            height: 350px;
+            border-radius: 16px;
+            background: #1e293b;
+            overflow: hidden;
+        }
+        .chart-container {
+            width: 100%;
+            height: 350px;
+            position: relative;
+        }
+        
+        .similar-houses-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .house-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+        .house-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .house-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 8px;
+        }
+        .house-specs {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .dist-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <div class="result-container">
+        
+        <div class="top-nav">
+            <div class="logo" style="margin: 0; width: 48px; height: 48px; font-size: 20px;">
+                <i class="fa-solid fa-house-chimney"></i>
+            </div>
+            <a href="{% url 'dashboard' %}" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <div class="hero-result">
+            <div class="estimated-label">Estimated Property Value</div>
+            <div class="price-display" id="main-price" data-val="{{ prediction.predicted_price|floatformat:0 }}">₹0</div>
+            <div class="price-range">
+                Estimated Range: 
+                <span id="min-price" data-val="{{ min_price|floatformat:0 }}">0</span> 
+                - 
+                <span id="max-price" data-val="{{ max_price|floatformat:0 }}">0</span>
+            </div>
+            <div class="confidence-badge">
+                <i class="fa-solid fa-bullseye"></i> 
+                {{ prediction.confidence_score|floatformat:1 }}% Model Confidence
+            </div>
+            <p style="margin-top: 24px; color: var(--text-muted); font-size: 16px;">
+                {{ prediction.location }} • {{ prediction.sqft }} sqft • {{ prediction.bedrooms }} BHK
+            </p>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="panel">
+                <h2><i class="fa-solid fa-chart-line"></i> Price vs Area Trend</h2>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <h2><i class="fa-solid fa-map-location-dot"></i> Location Analysis</h2>
+                <div id="map">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="https://maps.google.com/maps?q={{ prediction.location|urlencode }}&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                        style="border:0; filter: invert(90%) hue-rotate(180deg) contrast(100%);"
+                    ></iframe>
+                </div>
+                <p style="margin-top: 16px; color: var(--text-muted); text-align: center; font-size: 14px;">
+                    Showing property location estimate for "{{ prediction.location }}"
+                </p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2><i class="fa-solid fa-code-compare"></i> Market Comparables</h2>
+            <div class="similar-houses-grid">
+                {% for house in similar_houses %}
+                <div class="house-card">
+                    <div class="house-price money-format" data-val="{{ house.price|floatformat:0 }}">₹{{ house.price|floatformat:0 }}</div>
+                    <div class="house-specs">
+                        <i class="fa-solid fa-ruler-combined"></i> {{ house.sqft }} sqft &nbsp;&nbsp;
+                        <i class="fa-solid fa-bed"></i> {{ house.bhk }} BHK
+                    </div>
+                    <div class="dist-badge">
+                        <i class="fa-solid fa-location-arrow"></i> {{ house.distance }} km away
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Formatting Indian Rupees
+        function formatINR(number) {
+            return '₹' + number.toLocaleString('en-IN', {maximumFractionDigits: 0});
+        }
+
+        document.getElementById('main-price').innerText = formatINR(parseFloat(document.getElementById('main-price').dataset.val));
+        document.getElementById('min-price').innerText = formatINR(parseFloat(document.getElementById('min-price').dataset.val));
+        document.getElementById('max-price').innerText = formatINR(parseFloat(document.getElementById('max-price').dataset.val));
+        
+        document.querySelectorAll('.money-format').forEach(el => {
+            el.innerText = formatINR(parseFloat(el.dataset.val));
+        });
+
+        // Initialize Chart
+        const trendDataRaw = JSON.parse('{{ trend_data|escapejs }}');
+        
+        // Add the current prediction to the dataset with a special color
+        const chartPoints = trendDataRaw.map(d => ({x: d.sqft, y: d.price}));
+        const currPoint = {x: {{ prediction.sqft }}, y: {{ prediction.predicted_price|floatformat:0 }} };
+        
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        
+        new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Similar Properties',
+                    data: chartPoints,
+                    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                    pointRadius: 6,
+                }, {
+                    label: 'Your Estimate',
+                    data: [currPoint],
+                    backgroundColor: '#10b981',
+                    pointRadius: 10,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#f8fafc' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return formatINR(ctx.raw.y) + ' (' + ctx.raw.x + ' sqft)';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Square Footage' },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Price (₹)' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value/100000).toFixed(0) + 'L';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
